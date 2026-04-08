@@ -26,7 +26,19 @@ def get_session(session_id: str = "default_session") -> DataPipelineEnv:
         active_sessions[session_id] = DataPipelineEnv()
     return active_sessions[session_id]
 
-@app.get("/health")
+@app.get("/", tags=["General"])
+async def root():
+    """Root landing page."""
+    return {
+        "status": "online",
+        "benchmark": "data-pipeline-debug-env",
+        "version": "1.0.0",
+        "documentation": "/docs",
+        "health": "/health",
+        "message": "Welcome to the OpenEnv AI Data Pipeline Debugging Environment backend!"
+    }
+
+@app.get("/health", tags=["General"])
 async def health():
     """Health check endpoint."""
     return {"status": "healthy"}
