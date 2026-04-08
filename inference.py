@@ -55,10 +55,9 @@ if sys.stdout.encoding != "utf-8":
 # ─────────────────────────────────────────────────────────────
 
 # Phase 2 injected variables are API_KEY and API_BASE_URL
-API_KEY        = os.getenv("API_KEY") or os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY", "dummy_for_proxy")
-API_BASE_URL   = os.getenv("API_BASE_URL",   "https://router.huggingface.co/v1")
-MODEL_NAME     = os.getenv("MODEL_NAME",     "Qwen/Qwen2.5-72B-Instruct")
-ENV_SERVER_URL = os.getenv("ENV_SERVER_URL", "http://localhost:7860").rstrip("/")
+# These will be accessed directly via os.environ[] below
+MODEL_NAME     = os.environ.get("MODEL_NAME",     "Qwen/Qwen2.5-72B-Instruct")
+ENV_SERVER_URL = os.environ.get("ENV_SERVER_URL", "http://localhost:7860").rstrip("/")
 
 # Tasks to run (in order)
 TASKS         = ["easy", "medium", "hard"]
@@ -405,9 +404,9 @@ def main() -> None:
     Main entry point: run all tasks and print results.
     """
     # ── Validate credentials ──────────────────────────────────
-    if not API_KEY or API_KEY == "dummy_for_proxy":
+    if not os.environ.get("API_KEY"):
         print(
-            "[DEBUG] WARNING: API_KEY/HF_TOKEN not set correctly. "
+            "[DEBUG] WARNING: API_KEY not set correctly. "
             "LLM calls may fail without a valid API key.",
             flush=True,
         )
@@ -427,7 +426,11 @@ def main() -> None:
 
     # ── OpenAI client ─────────────────────────────────────────
     try:
-        client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
+        # Mandatory: Use os.environ explicitly for the proxy validation
+        client = OpenAI(
+            base_url=os.environ["API_BASE_URL"],
+            api_key=os.environ["API_KEY"]
+        )
     except Exception as e:
         print(f"[DEBUG] Failed to initialize OpenAI client: {e}. Running blind...", flush=True)
         # We must not crash! Pass a dummy client if OpenAI enforces strict logic.
