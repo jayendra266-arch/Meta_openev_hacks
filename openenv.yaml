@@ -1,0 +1,146 @@
+name: data-pipeline-debug-env
+version: "1.0.0"
+description: >
+  A real-world RL environment where an agent debugs broken SQL data pipelines.
+  The agent identifies bugs (column typos, wrong aggregations, JOIN mismatches,
+  messy schemas), fixes them step-by-step, and submits corrected queries.
+  Features self-healing pipelines, partial reward signals, and mistake-based
+  learning. All tasks are deterministic and reproducible.
+
+author: data-pipeline-debug-team
+tags:
+  - data-engineering
+  - sql
+  - debugging
+  - real-world
+  - deterministic
+
+base_url: "http://localhost:7860"
+
+tasks:
+  - name: easy
+    difficulty: easy
+    description: >
+      Fix a column name typo in a SQL query. The query references 'custmer_id'
+      which does not exist in the schema. The agent must identify the typo
+      and correct it to 'customer_id'.
+    max_steps: 8
+    max_reward: 1.0
+
+  - name: medium
+    difficulty: medium
+    description: >
+      Fix an aggregation bug where COUNT(*) is used instead of SUM(amount).
+      The pipeline reports wrong revenue figures because COUNT counts rows
+      rather than summing dollar values. The agent must detect and correct
+      the aggregation function.
+    max_steps: 8
+    max_reward: 1.0
+
+  - name: hard
+    difficulty: hard
+    description: >
+      Fix a JOIN failure caused by mismatched column names across tables.
+      The 'users' table has 'user_id' but the 'sessions' table has 'uid'.
+      The JOIN condition references 'sessions.user_id' which does not exist,
+      causing a runtime error. The agent must identify the schema mismatch
+      and fix the JOIN condition.
+    max_steps: 8
+    max_reward: 1.0
+
+  - name: messy_schema
+    difficulty: hard
+    description: >
+      Fix a query against a messy schema with inconsistent column naming:
+      mixed uppercase/lowercase, leading and trailing whitespace, and
+      inconsistent use of underscores. The agent must normalize the schema
+      and rewrite the query using clean, consistent column names.
+    max_steps: 8
+    max_reward: 1.0
+
+observation_space:
+  type: object
+  properties:
+    error_log:
+      type: string
+      description: Error message from the failing pipeline
+    query:
+      type: string
+      description: The current (possibly buggy) SQL query
+    schema:
+      type: array
+      items:
+        type: string
+      description: List of column names in the database schema
+    step:
+      type: integer
+      description: Number of actions taken so far in this episode
+    completed_actions:
+      type: array
+      items:
+        type: string
+      description: Which of the 6 actions have been completed
+    total_reward:
+      type: number
+      description: Accumulated reward so far this episode
+    current_query:
+      type: string
+      description: The most recently healed or optimized query
+
+action_space:
+  type: string
+  enum:
+    - identify_issue
+    - suggest_fix
+    - optimize_query
+    - validate_data
+    - explain_fix
+    - final_answer
+  description: >
+    One of 6 debugging actions. Following the listed order yields maximum
+    reward of 1.0. Out-of-order actions incur a -0.1 penalty. Repeated
+    actions incur a -0.1 penalty. Invalid actions incur a -0.2 penalty.
+
+reward_range: [0.0, 1.0]
+max_episode_steps: 12
+
+reward_table:
+  identify_issue:
+    correct: 0.30
+    wrong: -0.20
+  suggest_fix:
+    correct: 0.30
+    wrong: -0.20
+  optimize_query:
+    correct: 0.20
+    wrong: -0.10
+  validate_data:
+    correct: 0.10
+    wrong: -0.10
+  explain_fix:
+    correct: 0.05
+    wrong: 0.00
+  final_answer:
+    correct: 0.05
+    wrong: -0.30
+
+penalties:
+  wrong_order: -0.10
+  repeated_action: -0.10
+  invalid_action: -0.20
+
+endpoints:
+  reset:
+    method: POST
+    path: /reset
+    body: '{"task": "easy"}'
+  step:
+    method: POST
+    path: /step
+    body: '{"action_type": "identify_issue", "payload": null}'
+  state:
+    method: GET
+    path: /state
+  health:
+    method: GET
+    path: /health

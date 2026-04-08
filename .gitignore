@@ -1,0 +1,35 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+.env_bak
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache & compiler files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Hackathon evaluation logs
+evaluation.log
+openenv_val*.log
+proof_output.txt
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# OpenEnv & Ruff cache
+.ruff_cache/
+.pytest_cache/
