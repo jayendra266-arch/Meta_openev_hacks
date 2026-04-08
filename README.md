@@ -1,3 +1,12 @@
+---
+title: Debug
+emoji: 🐠
+colorFrom: pink
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # 🛡️ Data Pipeline Debugging Environment (OpenEnv)
 
 [![OpenEnv Compatible](https://img.shields.io/badge/OpenEnv-Certified-blue.svg)](https://openenv.ai)
@@ -65,3 +74,5 @@ This environment has been validated against the OpenEnv specification.
 openenv validate --path .
 ```
 Validating... Done. Accuracy and deterministic logic confirmed.
+
+Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
