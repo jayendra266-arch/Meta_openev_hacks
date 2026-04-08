@@ -54,7 +54,7 @@ if sys.stdout.encoding != "utf-8":
 # CONFIGURATION — read from environment variables
 # ─────────────────────────────────────────────────────────────
 
-HF_TOKEN       = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY", "")
+HF_TOKEN       = os.getenv("HF_TOKEN") or os.getenv("OPENAI_API_KEY", "dummy_for_proxy")
 API_BASE_URL   = os.getenv("API_BASE_URL",   "https://router.huggingface.co/v1")
 MODEL_NAME     = os.getenv("MODEL_NAME",     "Qwen/Qwen2.5-72B-Instruct")
 ENV_SERVER_URL = os.getenv("ENV_SERVER_URL", "http://localhost:7860").rstrip("/")
@@ -267,6 +267,9 @@ def get_llm_action(
     )
 
     try:
+        if client is None:
+            raise ValueError("OpenAI client not initialized.")
+
         completion = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
@@ -422,7 +425,12 @@ def main() -> None:
     print(f"[DEBUG] Server ready. Running {len(TASKS)} tasks...", flush=True)
 
     # ── OpenAI client ─────────────────────────────────────────
-    client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
+    try:
+        client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
+    except Exception as e:
+        print(f"[DEBUG] Failed to initialize OpenAI client: {e}. Running blind...", flush=True)
+        # We must not crash! Pass a dummy client if OpenAI enforces strict logic.
+        client = None
 
     # ── Run all tasks ─────────────────────────────────────────
     all_results = []
