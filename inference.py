@@ -131,9 +131,9 @@ def log_end(
 # ─────────────────────────────────────────────────────────────
 
 def env_reset(task_name: str) -> Dict[str, Any]:
-    """POST /reset to start a new episode."""
+    """POST /env/reset to start a new episode."""
     resp = requests.post(
-        f"{ENV_SERVER_URL}/reset",
+        f"{ENV_SERVER_URL}/env/reset",
         json={"task": task_name},
         timeout=30,
     )
@@ -142,12 +142,12 @@ def env_reset(task_name: str) -> Dict[str, Any]:
 
 
 def env_step(action_type: str, payload: Optional[str] = None) -> Dict[str, Any]:
-    """POST /step to submit an action."""
+    """POST /env/step to submit an action."""
     body = {"action_type": action_type}
     if payload:
         body["payload"] = payload
     resp = requests.post(
-        f"{ENV_SERVER_URL}/step",
+        f"{ENV_SERVER_URL}/env/step",
         json=body,
         timeout=30,
     )
@@ -156,8 +156,8 @@ def env_step(action_type: str, payload: Optional[str] = None) -> Dict[str, Any]:
 
 
 def env_state() -> Dict[str, Any]:
-    """GET /state to inspect current env state."""
-    resp = requests.get(f"{ENV_SERVER_URL}/state", timeout=10)
+    """GET /env/state to inspect current env state."""
+    resp = requests.get(f"{ENV_SERVER_URL}/env/state", timeout=10)
     resp.raise_for_status()
     return resp.json()
 
@@ -169,7 +169,7 @@ def wait_for_server(retries: int = 10, delay: float = 2.0) -> bool:
     """
     for attempt in range(1, retries + 1):
         try:
-            resp = requests.get(f"{ENV_SERVER_URL}/health", timeout=5)
+            resp = requests.get(f"{ENV_SERVER_URL}/env/health", timeout=5)
             if resp.status_code == 200:
                 return True
         except requests.exceptions.ConnectionError:

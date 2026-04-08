@@ -132,15 +132,15 @@ penalties:
 endpoints:
   reset:
     method: POST
-    path: /reset
+    path: /env/reset
     body: '{"task": "easy"}'
   step:
     method: POST
-    path: /step
+    path: /env/step
     body: '{"action_type": "identify_issue", "payload": null}'
   state:
     method: GET
-    path: /state
+    path: /env/state
   health:
     method: GET
-    path: /health
+    path: /env/health
