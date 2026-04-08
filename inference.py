@@ -56,7 +56,7 @@ if sys.stdout.encoding != "utf-8":
 
 # Phase 2 injected variables are API_KEY and API_BASE_URL
 # These will be accessed directly via os.environ[] below
-MODEL_NAME     = os.environ.get("MODEL_NAME",     "Qwen/Qwen2.5-72B-Instruct")
+MODEL_NAME     = os.environ.get("MODEL_NAME",     "gpt-4.1-mini")
 ENV_SERVER_URL = os.environ.get("ENV_SERVER_URL", "http://localhost:7860").rstrip("/")
 
 # Tasks to run (in order)
@@ -266,38 +266,33 @@ def get_llm_action(
         "final_answer",
     )
 
-    try:
-        if client is None:
-            raise ValueError("OpenAI client not initialized.")
+    if client is None:
+        raise ValueError("OpenAI client not initialized.")
 
-        completion = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user",   "content": build_user_prompt(obs, step)},
-            ],
-            temperature=TEMPERATURE,
-            max_tokens=MAX_TOKENS,
-            stream=False,
-        )
-        raw_output = (completion.choices[0].message.content or "").strip().lower()
+    completion = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user",   "content": build_user_prompt(obs, step)},
+        ],
+        temperature=TEMPERATURE,
+        max_tokens=MAX_TOKENS,
+        stream=False,
+    )
+    raw_output = (completion.choices[0].message.content or "").strip().lower()
 
-        # Find first valid action in the LLM output
-        for action in VALID_ACTIONS:
-            if action in raw_output:
-                if action not in completed:
-                    return action
+    # Find first valid action in the LLM output
+    for action in VALID_ACTIONS:
+        if action in raw_output:
+            if action not in completed:
+                return action
 
-        # If the action returned is already completed, use fallback
-        print(
-            f"[DEBUG] LLM output '{raw_output}' not usable. Using fallback: {fallback}",
-            flush=True,
-        )
-        return fallback
-
-    except Exception as exc:
-        print(f"[DEBUG] LLM call failed: {exc}. Using fallback: {fallback}", flush=True)
-        return fallback
+    # If the action returned is already completed or invalid, use fallback
+    print(
+        f"[DEBUG] LLM output '{raw_output}' not usable. Using fallback: {fallback}",
+        flush=True,
+    )
+    return fallback
 
 
 # ─────────────────────────────────────────────────────────────
@@ -425,16 +420,11 @@ def main() -> None:
     print(f"[DEBUG] Server ready. Running {len(TASKS)} tasks...", flush=True)
 
     # ── OpenAI client ─────────────────────────────────────────
-    try:
-        # Mandatory: Use os.environ explicitly for the proxy validation
-        client = OpenAI(
-            base_url=os.environ["API_BASE_URL"],
-            api_key=os.environ["API_KEY"]
-        )
-    except Exception as e:
-        print(f"[DEBUG] Failed to initialize OpenAI client: {e}. Running blind...", flush=True)
-        # We must not crash! Pass a dummy client if OpenAI enforces strict logic.
-        client = None
+    # Initialize exactly as validator requires
+    client = OpenAI(
+        base_url=os.environ["API_BASE_URL"],
+        api_key=os.environ["API_KEY"]
+    )
 
     # ── Run all tasks ─────────────────────────────────────────
     all_results = []
