@@ -18,6 +18,18 @@ import logging
 from fastapi import FastAPI, HTTPException, Request, Body, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+# --- HOTFIX FOR GRADIO 5.1.0 & HUGGINGFACE-HUB 1.9.2 CRASH ---
+# huggingface-hub removed HfFolder in 1.9.x, but Gradio 5.1.0 still tries to import it.
+import huggingface_hub
+if not hasattr(huggingface_hub, 'HfFolder'):
+    class HfFolder:
+        @staticmethod
+        def get_token(): return None
+        @staticmethod
+        def save_token(token): pass
+    huggingface_hub.HfFolder = HfFolder
+
 import gradio as gr
 
 from env.models import Action, Observation, StepResult, ResetResult, ResetRequest
