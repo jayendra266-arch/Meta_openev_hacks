@@ -266,33 +266,38 @@ def get_llm_action(
         "final_answer",
     )
 
-    if client is None:
-        raise ValueError("OpenAI client not initialized.")
+    try:
+        if client is None:
+            raise ValueError("OpenAI client not initialized.")
 
-    completion = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user",   "content": build_user_prompt(obs, step)},
-        ],
-        temperature=TEMPERATURE,
-        max_tokens=MAX_TOKENS,
-        stream=False,
-    )
-    raw_output = (completion.choices[0].message.content or "").strip().lower()
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user",   "content": build_user_prompt(obs, step)},
+            ],
+            temperature=TEMPERATURE,
+            max_tokens=MAX_TOKENS,
+            stream=False,
+        )
+        raw_output = (completion.choices[0].message.content or "").strip().lower()
 
-    # Find first valid action in the LLM output
-    for action in VALID_ACTIONS:
-        if action in raw_output:
-            if action not in completed:
-                return action
+        # Find first valid action in the LLM output
+        for action in VALID_ACTIONS:
+            if action in raw_output:
+                if action not in completed:
+                    return action
 
-    # If the action returned is already completed or invalid, use fallback
-    print(
-        f"[DEBUG] LLM output '{raw_output}' not usable. Using fallback: {fallback}",
-        flush=True,
-    )
-    return fallback
+        # If the action returned is already completed or invalid, use fallback
+        print(
+            f"[DEBUG] LLM output '{raw_output}' not usable. Using fallback: {fallback}",
+            flush=True,
+        )
+        return fallback
+
+    except Exception as exc:
+        print(f"[DEBUG] LLM call failed: {exc}. Using fallback: {fallback}", flush=True)
+        return fallback
 
 
 # ─────────────────────────────────────────────────────────────
@@ -421,10 +426,16 @@ def main() -> None:
 
     # ── OpenAI client ─────────────────────────────────────────
     # Initialize exactly as validator requires
-    client = OpenAI(
-        base_url=os.environ["API_BASE_URL"],
-        api_key=os.environ["API_KEY"]
-    )
+    try:
+        # Initialize exactly as validator requires
+        client = OpenAI(
+            base_url=os.environ["API_BASE_URL"],
+            api_key=os.environ["API_KEY"]
+        )
+    except Exception as e:
+        print(f"[DEBUG] Failed to initialize OpenAI client: {e}. Running blind...", flush=True)
+        # We must not crash! Pass a dummy client to allow fallback logic to handle the run.
+        client = None
 
     # ── Run all tasks ─────────────────────────────────────────
     all_results = []
