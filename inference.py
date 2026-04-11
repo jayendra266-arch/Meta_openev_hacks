@@ -152,13 +152,14 @@ def run_task(client: OpenAI, task_name: str) -> Dict[str, Any]:
             
         total_reward = sum(rewards)
         score = min(max(total_reward / MAX_REWARD, 0.0), 1.0)
-        # Validator requires strictly (0, 1) — not 0.0 or 1.0
-        if score <= 0.0: score = 0.01
-        if score >= 1.0: score = 0.99
         success = score >= SUCCESS_THRESHOLD
     except Exception as e:
         print(f"[DEBUG] Task error: {e}")
     finally:
+        # Validator requires strictly (0, 1) — not 0.0 or 1.0
+        # This MUST be in finally so it runs even on error paths
+        if score <= 0.0: score = 0.01
+        if score >= 1.0: score = 0.99
         log_end(success, steps_taken, score, rewards)
     return {"score": score}
 
