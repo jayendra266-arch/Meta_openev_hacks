@@ -413,6 +413,17 @@ def main() -> None:
     """
     Main entry point: run all tasks and print results.
     """
+    # ── Wait for environment server ───────────────────────────
+    print(f"[DEBUG] Connecting to env server at {ENV_SERVER_URL} ...", flush=True)
+    server_ready = wait_for_server(retries=15, delay=2.0)
+    if not server_ready:
+        print(
+            f"[DEBUG] FATAL: Server at {ENV_SERVER_URL} did not respond. "
+            "Start it with: python api.py",
+            flush=True,
+        )
+        sys.exit(1)
+
     print(f"[DEBUG] Server ready. Running {len(TASKS)} tasks...", flush=True)
 
     # ── Validate & Initialize OpenAI client ───────────────────
@@ -476,4 +487,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"\n[CRITICAL] Unhandled exception in main execution loop:", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
