@@ -1,10 +1,10 @@
 fastapi==0.110.0
 uvicorn==0.28.0
-openai==1.14.0
+openai>=1.55.0
+httpx<0.28.0
 requests==2.31.0
 pydantic==2.6.4
 pydantic-settings==2.2.1
-# asyncio is built-in; removed backport to prevent conflicts
 openenv-core>=0.1.0
 python-multipart>=0.0.18
 jinja2==3.1.3
