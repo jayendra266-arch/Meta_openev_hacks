@@ -10,9 +10,9 @@ MANDATORY STDOUT FORMAT:
   [END]   success=<true|false> steps=<n> score=<0.000> rewards=<r1,r2,...>
 
 ENVIRONMENT VARIABLES:
-  HF_TOKEN        — Hugging Face API key (required for LLM calls)
-  API_BASE_URL    — LLM endpoint (default: https://router.huggingface.co/v1)
-  MODEL_NAME      — Model identifier (default: Qwen/Qwen2.5-72B-Instruct)
+  API_KEY         — API key for the LLM endpoint (required)
+  API_BASE_URL    — LLM endpoint (required)
+  MODEL_NAME      — Model identifier (default: gpt-4o-mini)
   ENV_SERVER_URL  — Where the env server is running (default: http://localhost:7860)
 
 WORKFLOW:
@@ -26,11 +26,11 @@ USAGE:
   # 1. Start the server (in a separate terminal):
   #    python api.py
   # 2. Run inference:
-  #    HF_TOKEN=hf_xxx python inference.py
+  #    python inference.py
 
   # Or with Docker:
   #    docker run -p 7860:7860 data-pipeline-env
-  #    HF_TOKEN=hf_xxx python inference.py
+  #    python inference.py
 """
 
 from __future__ import annotations
@@ -54,10 +54,14 @@ if sys.stdout.encoding != "utf-8":
 # CONFIGURATION — read from environment variables
 # ─────────────────────────────────────────────────────────────
 
-# Phase 2 injected variables are API_KEY and API_BASE_URL
-# These will be accessed directly via os.environ[] below
-MODEL_NAME     = os.environ.get("MODEL_NAME",     "gpt-4.1-mini")
+# STRICT: use ONLY injected variables
+API_BASE_URL = os.environ["API_BASE_URL"]
+API_KEY = os.environ["API_KEY"]
+MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 ENV_SERVER_URL = os.environ.get("ENV_SERVER_URL", "http://localhost:7860").rstrip("/")
+
+if not API_BASE_URL or not API_KEY:
+    raise RuntimeError("API_BASE_URL or API_KEY not set properly")
 
 # Tasks to run (in order)
 TASKS         = ["easy", "medium", "hard"]
@@ -266,38 +270,30 @@ def get_llm_action(
         "final_answer",
     )
 
-    try:
-        if client is None:
-            raise ValueError("OpenAI client not initialized.")
+    completion = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user",   "content": build_user_prompt(obs, step)},
+        ],
+        temperature=TEMPERATURE,
+        max_tokens=MAX_TOKENS,
+        stream=False,
+    )
+    raw_output = (completion.choices[0].message.content or "").strip().lower()
 
-        completion = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user",   "content": build_user_prompt(obs, step)},
-            ],
-            temperature=TEMPERATURE,
-            max_tokens=MAX_TOKENS,
-            stream=False,
-        )
-        raw_output = (completion.choices[0].message.content or "").strip().lower()
+    # Find first valid action in the LLM output
+    for action in VALID_ACTIONS:
+        if action in raw_output:
+            if action not in completed:
+                return action
 
-        # Find first valid action in the LLM output
-        for action in VALID_ACTIONS:
-            if action in raw_output:
-                if action not in completed:
-                    return action
-
-        # If the action returned is already completed or invalid, use fallback
-        print(
-            f"[DEBUG] LLM output '{raw_output}' not usable. Using fallback: {fallback}",
-            flush=True,
-        )
-        return fallback
-
-    except Exception as exc:
-        print(f"[DEBUG] LLM call failed: {exc}. Using fallback: {fallback}", flush=True)
-        return fallback
+    # If the action returned is already completed or invalid, use fallback
+    print(
+        f"[DEBUG] LLM output '{raw_output}' not usable. Using fallback: {fallback}",
+        flush=True,
+    )
+    return fallback
 
 
 # ─────────────────────────────────────────────────────────────
@@ -403,14 +399,6 @@ def main() -> None:
     """
     Main entry point: run all tasks and print results.
     """
-    # ── Validate credentials ──────────────────────────────────
-    if not os.environ.get("API_KEY"):
-        print(
-            "[DEBUG] WARNING: API_KEY not set correctly. "
-            "LLM calls may fail without a valid API key.",
-            flush=True,
-        )
-
     # ── Wait for environment server ───────────────────────────
     print(f"[DEBUG] Connecting to env server at {ENV_SERVER_URL} ...", flush=True)
     server_ready = wait_for_server(retries=15, delay=2.0)
@@ -425,17 +413,12 @@ def main() -> None:
     print(f"[DEBUG] Server ready. Running {len(TASKS)} tasks...", flush=True)
 
     # ── OpenAI client ─────────────────────────────────────────
-    # Initialize exactly as validator requires
-    try:
-        # Initialize exactly as validator requires
-        client = OpenAI(
-            base_url=os.environ["API_BASE_URL"],
-            api_key=os.environ["API_KEY"]
-        )
-    except Exception as e:
-        print(f"[DEBUG] Failed to initialize OpenAI client: {e}. Running blind...", flush=True)
-        # We must not crash! Pass a dummy client to allow fallback logic to handle the run.
-        client = None
+    print("Using API_BASE_URL:", API_BASE_URL)
+    
+    client = OpenAI(
+        base_url=API_BASE_URL,
+        api_key=API_KEY
+    )
 
     # ── Run all tasks ─────────────────────────────────────────
     all_results = []

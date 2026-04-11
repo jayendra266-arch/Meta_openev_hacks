@@ -65,7 +65,7 @@ python api.py
 
 ### 2. Run the Baseline Inference
 ```bash
-$env:HF_TOKEN="your_key"; python inference.py
+python inference.py
 ```
 
 ## 📜 Certification
@@ -75,4 +75,3 @@ openenv validate --path .
 ```
 Validating... Done. Accuracy and deterministic logic confirmed.
 
-Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
